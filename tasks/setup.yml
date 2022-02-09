@@ -1,0 +1,74 @@
+---
+
+- name: Include PostgreSQL client
+  include_role:
+    name: AlphaNodes.postgresql-client
+
+- name: Be sure Barman are installed
+  apt:
+    name: '{{ barman_packages }}'
+    state: present
+
+- name: Update barman configuration
+  template:
+    src: 'barman.conf.j2'
+    dest: '/etc/barman.conf'
+
+- name: Make sure .ssh directory exists
+  file:
+    path: '{{ barman_home }}/.ssh'
+    state: directory
+    owner: '{{ barman_user }}'
+    group: '{{ barman_group }}'
+    mode: 0700
+
+- name: Configure postgres ssh server access
+  authorized_key:
+    user: barman
+    exclusive: true
+    key: |
+        {% for server in barman_db_servers %}
+        {{ lookup('file', 'barman_access/' + server.name + '_id_rsa.pub') }}
+        {% endfor %}
+    state: present
+  when: barman_db_servers | length
+
+- name: Install private ssh key for barman
+  copy:
+    src: '{{ barman_private_key }}'
+    dest: '{{ barman_home }}/.ssh/id_rsa'
+    owner: '{{ barman_user }}'
+    group: '{{ barman_group }}'
+    mode: 0600
+
+- name: Install .pgpass for barman
+  template:
+    src: pgpass.j2
+    dest: '{{ barman_home }}/.pgpass'
+    owner: '{{ barman_user }}'
+    group: '{{ barman_group }}'
+    mode: 0600
+  when: barman_db_servers | length
+
+- name: SSH server configurations
+  template:
+    src: server.conf.j2
+    dest: '/etc/barman.d/{{ item.name }}.conf'
+  loop: '{{ barman_db_servers }}'
+
+- name: Connection check (ssh) to DB Server
+  tags: connection_check, ssh_check
+  become_user: barman
+  become: true
+  command: '{{ item.ssh_command }} -C true'
+  loop: '{{ barman_db_servers }}'
+  changed_when: false
+
+- name: Connection check (postgresql) to DB Server
+  tags: connection_check, psql_check
+  become_user: barman
+  become: true
+  command: psql -c 'SELECT version()' -U {{ item.conninfo_user | default(barman_postgresql_user) }} -p {{ item.conninfo_port | default('5432') }} -h {{ item.conninfo_host }} {{ item.conninfo_dbname | default(barman_default_conninfo_dbname) }}
+  register: connection_check
+  loop: '{{ barman_db_servers }}'
+  changed_when: false

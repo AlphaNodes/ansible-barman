@@ -1,0 +1,7 @@
+---
+- hosts: all
+  vars:
+    barman_task: setup
+    barman_postgresql_password: bestsecret
+  roles:
+    - role_under_test

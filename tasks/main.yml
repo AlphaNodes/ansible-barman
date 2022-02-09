@@ -1,0 +1,20 @@
+---
+
+- name: Check if barman_postgresql_password is set
+  fail:
+    msg: 'barman_postgresql_password is not set, please provide it!'
+  when: barman_postgresql_password == ''
+
+- name: Include setup tasks
+  include_tasks: setup.yml
+  tags:
+    - barman
+    - postgresql
+  when: barman_task == 'setup'
+
+- name: Include setup tasks
+  include_tasks: setup.yml
+  tags:
+    - barman
+    - backup
+  when: barman_task == 'backup'
