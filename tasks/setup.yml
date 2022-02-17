@@ -2,7 +2,7 @@
 
 - name: Include PostgreSQL client
   include_role:
-    name: AlphaNodes.postgresql-client
+    name: alphanodes.postgresql_client
 
 - name: Be sure Barman are installed
   apt:
