@@ -12,8 +12,8 @@
     - postgresql
   when: barman_task == 'setup'
 
-- name: Include setup tasks
-  include_tasks: setup.yml
+- name: Include backup tasks
+  include_tasks: backup.yml
   tags:
     - barman
     - backup
